@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FRLG Battle Sim (Airtight Puzzle Mode V2)</title>
+    <title>FRLG Battle Sim (Airtight Puzzle Mode V2.2)</title>
     
     <style>
         body {
@@ -16,6 +16,25 @@
             font-family: 'Courier New', monospace; 
         }
 
+        /* --- START SCREEN OVERLAY --- */
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 9999;
+            text-align: center;
+        }
+
         #battle-screen {
             width: 480px; 
             height: 320px; 
@@ -25,6 +44,7 @@
             overflow: hidden;
             image-rendering: pixelated; 
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: none; /* Hidden until start */
         }
 
         .ui-box, .pokemon-info-box {
@@ -114,6 +134,8 @@
 </head>
 <body>
 
+<div id="start-overlay">CLICK TO BEGIN SIMULATION</div>
+
 <div id="battle-screen">
     <div id="opponent-info" class="pokemon-info-box">
         <div class="name-level"><span id="opponent-name">???</span><span id="opponent-level">Lv5</span></div>
@@ -164,8 +186,8 @@
         maxHp: 25, currentHp: 25, speed: 15,
         ability: "LIMBER",
         defense: 10,
-        withdrawUses: 0, // NEW: Custom tracking for Withdraw
-        damageReduction: 1, // NEW: Damage reduction multiplier (1 = no reduction)
+        withdrawUses: 0, 
+        damageReduction: 1, 
         isTransformed: false,
         sprite: SPRITE_DITTO_BACK,
         baseMoves: [
@@ -199,14 +221,14 @@
         },
         { 
             name: "JOLTEON", 
-            maxHp: 65, currentHp: 65, speed: 130, // Faster!
+            maxHp: 65, currentHp: 65, speed: 130, 
             ability: "VOLT ABSORB", defense: 60, withdrawUses: 0, damageReduction: 1,
             spriteFront: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iii/firered-leafgreen/135.png",
             spriteBack: SPRITE_JOLTEON_BACK,
             moves: [
                 { name: "THUNDERSHOCK", power: 40, pp: 30, maxPp: 30, type: "ELECTRIC" }, 
                 { name: "THUNDERBOLT", power: 95, pp: 15, maxPp: 15, type: "ELECTRIC" }, 
-                { name: "THUNDER", power: 120, pp: 10, maxPp: 10, type: "ELECTRIC" }, // Thunder Buff Target
+                { name: "THUNDER", power: 120, pp: 10, maxPp: 10, type: "ELECTRIC" }, 
                 { name: "DISCHARGE", power: 80, pp: 15, maxPp: 15, type: "ELECTRIC" }
             ]
         },
@@ -218,7 +240,7 @@
             spriteBack: SPRITE_MAROWAK_BACK,
             moves: [
                 { name: "BONE CLUB", power: 65, pp: 20, maxPp: 20, type: "GROUND" }, 
-                { name: "EARTHQUAKE", power: 100, pp: 10, maxPp: 10, type: "GROUND" }, // OHKO Threat
+                { name: "EARTHQUAKE", power: 100, pp: 10, maxPp: 10, type: "GROUND" }, 
                 { name: "MEGA PUNCH", power: 80, pp: 20, maxPp: 20, type: "NORMAL" }, 
                 { name: "BONEMERANG", power: 50, pp: 10, maxPp: 10, type: "GROUND" } 
             ]
@@ -249,7 +271,6 @@
 
     // --- 3. CORE STAT AND UI HELPERS ---
     
-    // Original Gen 3 stat logic is no longer used for defense calculation.
     function calculateStat(baseStat, stage) {
         let multiplier;
         if (stage >= 0) {
@@ -295,15 +316,15 @@
         // Reset opponent state for fresh battle
         currentOpponent = opponentQueue[currentOpponentIndex];
         currentOpponent.currentHp = currentOpponent.maxHp;
-        currentOpponent.withdrawUses = 0; // Reset custom state
-        currentOpponent.damageReduction = 1; // Reset custom state
+        currentOpponent.withdrawUses = 0; 
+        currentOpponent.damageReduction = 1; 
         currentOpponent.lastMoveUsed = null;
         
         // Update UI
         document.getElementById('opponent-name').textContent = currentOpponent.name;
         opponentSprite.src = currentOpponent.spriteFront;
         opponentSprite.classList.remove('fainted-opponent');
-        opponentSprite.style.right = '95px'; // Reset position
+        opponentSprite.style.right = '95px'; 
         opponentSprite.style.opacity = '1';
         
         updateHpDisplay(currentOpponent, 'opponent');
@@ -314,11 +335,10 @@
     // --- 4. DITTO RESET LOGIC ---
 
     function resetDittoState() {
-        // Only reset custom stats/stages/moves, KEEP HP
         ditto.ability = BASE_DITTO_STATE.ability;
         ditto.defense = BASE_DITTO_STATE.defense;
-        ditto.withdrawUses = 0; // Reset custom state
-        ditto.damageReduction = 1; // Reset custom state
+        ditto.withdrawUses = 0; 
+        ditto.damageReduction = 1; 
         ditto.isTransformed = BASE_DITTO_STATE.isTransformed;
         
         ditto.moves = BASE_DITTO_STATE.baseMoves.map(m => ({...m}));
@@ -326,13 +346,11 @@
         ditto.currentMoveset = ditto.moves;
         
         if(currentOpponent) {
-            // Restore base defense if it was guard swapped
             const baseOpponentDef = opponentQueue[currentOpponentIndex].defense;
             const baseDittoDef = BASE_DITTO_STATE.defense;
             currentOpponent.defense = baseOpponentDef; 
             ditto.defense = baseDittoDef;
             
-            // Reset custom opponent stages
             currentOpponent.withdrawUses = 0; 
             currentOpponent.damageReduction = 1;
         }
@@ -365,25 +383,17 @@
 
     function checkGameOver() {
         if (ditto.currentHp <= 0) {
-            // Darken the screen
             document.body.style.backgroundColor = '#000';
-            // Hide the battle screen
             const battleScreen = document.getElementById('battle-screen');
             if (battleScreen) battleScreen.style.display = 'none';
             
-            // Create a Game Over message element
             const gameOverMessage = document.createElement('div');
             gameOverMessage.textContent = "Game Over. Hit Refresh to Try Again.";
             gameOverMessage.style.cssText = `
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                color: #fff;
-                font-size: 24px;
-                font-family: 'Courier New', monospace;
-                text-align: center;
-                white-space: pre; 
+                position: absolute; top: 50%; left: 50%;
+                transform: translate(-50%, -50%); color: #fff;
+                font-size: 24px; font-family: 'Courier New', monospace;
+                text-align: center; white-space: pre; 
             `;
             document.body.appendChild(gameOverMessage);
             return true;
@@ -401,7 +411,6 @@
     
     async function executeDamage(attacker, target, moveName, basePower, moveType) {
         return new Promise(resolve => {
-            // VOLT ABSORB CHECK
             if (moveType === "ELECTRIC" && target.ability === "VOLT ABSORB") {
                 const healAmount = Math.floor(target.maxHp * 0.25);
                 target.currentHp = Math.min(target.maxHp, target.currentHp + healAmount);
@@ -412,26 +421,18 @@
                 return;
             }
             
-            // NEW SIMPLIFIED DAMAGE CALCULATION (Tuned for OHKO Puzzle)
-            // Damage = Max(1, Base Power * 0.15 + 10)
             let damage = Math.max(1, Math.floor(basePower * 0.15 + 10)); 
 
-            // Type Effectiveness and Custom Buffs
             let effectiveness = 1;
-
-            // Type Chart Application
-            if (moveType === 'ELECTRIC' && target.name === 'MAROWAK') effectiveness = 0; // Immune
-            if (moveType === 'GROUND' && target.name === 'JOLTEON') effectiveness = 2; // Super Effective
-            if (moveType === 'ELECTRIC' && target.name === 'SQUIRTLE') effectiveness = 2; // Super Effective
-            // 1. Bubblebeam Super Effective (against Marowak)
+            if (moveType === 'ELECTRIC' && target.name === 'MAROWAK') effectiveness = 0; 
+            if (moveType === 'GROUND' && target.name === 'JOLTEON') effectiveness = 2; 
+            if (moveType === 'ELECTRIC' && target.name === 'SQUIRTLE') effectiveness = 2; 
             if (moveType === 'WATER' && target.name === 'MAROWAK') effectiveness = 2; 
 
-            // 2. Custom Thunder Buff (Double Damage Multiplier)
             if (moveName === 'THUNDER') {
                 effectiveness *= 2; 
             }
 
-            // Apply effectiveness
             if (effectiveness === 0) {
                  displayMessage(`It doesn't affect<br>${target.name}...`);
                  setTimeout(() => resolve(0), 1000);
@@ -439,8 +440,6 @@
             }
             
             damage = Math.floor(damage * effectiveness);
-            
-            // 3. Apply custom damage reduction (from Withdraw)
             damage = Math.max(1, Math.floor(damage * target.damageReduction)); 
 
             target.currentHp = Math.max(0, target.currentHp - damage);
@@ -456,7 +455,6 @@
                 else {
                     displayMessage(`${target.name} took<br>damage!`);
                 }
-                
                 setTimeout(() => resolve(damage), 1000);
             }, 500);
         });
@@ -478,34 +476,45 @@
                         playerSprite.src = currentOpponent.spriteBack;
                         ditto.isTransformed = true;
                         ditto.currentMoveset = currentOpponent.moves.map(m => ({...m}));
-                        // FIX: Copy opponent's ability (Volt Absorb, Torrent, Rock Head)
                         ditto.ability = currentOpponent.ability; 
-                        displayMessage(`${ditto.name} has <i>permanently</i><br>transformed into a ${currentOpponent.name}, and will remain so until Transform is used again.`); 
+                        displayMessage(`${ditto.name} has <i>permanently</i><br>transformed into a ${currentOpponent.name}, and will remain so until Transform is used again!`);
+                        setTimeout(() => resolve(moveName.replace(' ', '_')), 4000); 
+
                     } else if (moveName === "SKILL SWAP") {
-                        const temp = ditto.ability;
-                        ditto.ability = currentOpponent.ability;
-                        currentOpponent.ability = temp;
-                        displayMessage(`${ditto.name} has <i>permanently</i><br>swapped abilities, and will remain so until Skill Swap is used again.`); 
+                        const oldAttackerAbility = attacker.ability;
+                        const oldTargetAbility = target.ability;
+                        const temp = attacker.ability;
+                        attacker.ability = target.ability;
+                        target.ability = temp;
+
+                        displayMessage(`${attacker.name} swapped ${oldAttackerAbility} for<br>${oldTargetAbility}! This change is<br><i>permanent</i> until used again!`); 
                         const skillSwapMove = ditto.extraMoves.find(m => m.name === "SKILL SWAP");
                         if (skillSwapMove) skillSwapMove.pp--; 
+                        setTimeout(() => resolve(moveName.replace(' ', '_')), 4000); 
+
                     } else if (moveName === "GUARD SWAP") {
-                        const dittoDefense = ditto.defense;
-                        ditto.defense = currentOpponent.defense;
-                        currentOpponent.defense = dittoDefense;
-                        displayMessage(`${ditto.name} has <i>permanently</i><br>swapped defenses, and will remain so until Guard Swap is used again.`); 
+                        const oldAttackerDef = attacker.defense;
+                        const oldTargetDef = target.defense;
+                        const tempDef = attacker.defense;
+                        attacker.defense = target.defense;
+                        target.defense = tempDef;
+
+                        displayMessage(`${attacker.name} swapped ${oldAttackerDef} Def for<br>${oldTargetDef} Def! This change is<br><i>permanent</i> until used again!`); 
                         const guardSwapMove = ditto.extraMoves.find(m => m.name === "GUARD SWAP");
                         if (guardSwapMove) guardSwapMove.pp--; 
+                        setTimeout(() => resolve(moveName.replace(' ', '_')), 4000); 
+
                     } else if (moveName === "WITHDRAW") {
-                         // NEW CUSTOM WITHDRAW LOGIC
                          if (attacker.withdrawUses < 3) {
                             attacker.withdrawUses++;
-                            // Reduce damage multiplier by 0.3, ensuring a minimum of 0.1 (90% reduction max)
                             attacker.damageReduction = Math.max(0.1, attacker.damageReduction - 0.3); 
                             const reductionPercent = Math.round((1 - attacker.damageReduction) * 100);
                             displayMessage(`${attacker.name} withdrew! Damage<br>now reduced by ${reductionPercent}%!`);
                          } else {
                             displayMessage(`But it failed! Max limit<br>reached.`);
                          }
+                         setTimeout(() => resolve(moveName.replace(' ', '_')), 1500);
+
                     } else if (moveName === "SKETCH") {
                         const isSpecialMove = ["SKETCH", "TRANSFORM", "SKILL SWAP", "GUARD SWAP", "WITHDRAW"].includes(currentOpponent.lastMoveUsed ? currentOpponent.lastMoveUsed.name : '');
                         if (!currentOpponent.lastMoveUsed || isSpecialMove) {
@@ -517,7 +526,6 @@
                         resolve("SKETCH_SUCCESS_PENDING"); 
                         return;
                     }
-                    setTimeout(() => resolve(moveName.replace(' ', '_')), 1500); 
                 }, 1000);
                 return; 
             }
@@ -527,8 +535,6 @@
             toggleActionMenu(false);
             
             setTimeout(async () => {
-                
-                // MULTI-HIT LOGIC (Bonemerang)
                 if (moveName === "BONEMERANG") {
                     await executeDamage(attacker, target, moveName, basePower, moveType);
                     if (target.currentHp > 0) {
@@ -537,7 +543,6 @@
                         await executeDamage(attacker, target, moveName, basePower, moveType);
                     }
                 } else {
-                    // Standard Single Hit
                     await executeDamage(attacker, target, moveName, basePower, moveType);
                 }
 
@@ -546,7 +551,6 @@
                     displayMessage(`${target.name} fainted!`);
                     setTimeout(() => resolve(moveName), 1500);
                 } else {
-                     // Recoil check (Struggle)
                     if (moveName === "STRUGGLE" && ditto === attacker && ditto.currentHp > 0) {
                         const recoil = Math.max(1, Math.floor(ditto.maxHp / 4));
                         ditto.currentHp = Math.max(0, ditto.currentHp - recoil);
@@ -583,9 +587,7 @@
 
         if (playerTurnResult === "SKETCH_SUCCESS_PENDING") return; 
         
-        // Decrement PP
         const usedMovePUM = ditto.extraMoves.find(m => m.name === playerMoveName);
-        // Transform is handled here to allow multiple uses per battle
         if (usedMovePUM && usedMovePUM.pp > 0) usedMovePUM.pp--; 
         
         const usedMovePrimary = ditto.currentMoveset.find(m => m.name === playerMoveName);
@@ -595,16 +597,13 @@
             if (playerTurnResult !== "TRANSFORM") await opponentTurn();
         }
         
-        // Check for Game Over after opponent turn or recoil
         if (checkGameOver()) return; 
 
-        // Final state check
         if (ditto.currentHp > 0 && currentOpponent.currentHp > 0) {
             displayMessage(`What will<br>${ditto.name} do?`);
             if (playerTurnResult === "TRANSFORM") createMoveSelectionScreen(); 
             else toggleActionMenu(true);
         } else if (currentOpponent.currentHp <= 0) {
-            // Opponent Defeated Logic
             currentOpponentIndex++;
             if (currentOpponentIndex < opponentQueue.length) {
                 setTimeout(() => {
@@ -623,7 +622,7 @@
             }
         } else {
              displayMessage(`DITTOMON fainted!`);
-             checkGameOver(); // This should catch faints not caught by opponent turn/recoil
+             checkGameOver(); 
         }
     }
 
@@ -690,7 +689,10 @@
     function createMoveSelectionScreen(isSketchSelection = false, sketchedMove = null) {
         const oldActionMenu = document.getElementById('action-menu');
         if (oldActionMenu) oldActionMenu.style.display = 'none';
+        
+        // Hide default message area for BOTH normal and Sketch selection to ensure grid fits
         messageArea.style.display = 'none'; 
+        
         pocButton.style.display = isSketchSelection ? 'none' : 'flex'; 
         secondaryMenu.style.display = 'none'; 
         removeSelectionMenu(); 
@@ -705,37 +707,46 @@
         let infoAndBackContainer = document.createElement('div');
         infoAndBackContainer.id = 'info-and-back-container';
         
-        const ppTypeDisplay = document.createElement('div');
-        ppTypeDisplay.id = 'pp-type-display';
-        const backButton = document.createElement('div');
-        backButton.id = 'back-button';
-        backButton.textContent = 'BACK';
-        backButton.className = 'menu-button'; 
-        infoAndBackContainer.appendChild(ppTypeDisplay);
-        infoAndBackContainer.appendChild(backButton);
-        
         battleMessageBox.appendChild(moveGridContainer);
         battleMessageBox.appendChild(infoAndBackContainer);
 
-        backButton.addEventListener('click', resetBattleMessageBoxToStandard);
-
-        moveGridContainer.innerHTML = ''; 
         let moveGrid;
 
         if (isSketchSelection) {
+            // Use standard Move Grid layout for Sketch selection too
             moveGrid = document.createElement('ul');
-            moveGrid.className = 'sketch-selection-grid'; 
+            moveGrid.id = 'move-grid'; 
             moveGridContainer.appendChild(moveGrid);
-            messageArea.style.display = 'block'; 
-            displayMessage(`Which move will you<br>replace?`); 
+            
+            infoAndBackContainer.style.display = 'flex';
+            
+            // Custom prompt in the side box
+            const promptDiv = document.createElement('div');
+            promptDiv.style.cssText = 'flex-grow: 1; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: bold; font-size: 16px;';
+            promptDiv.innerHTML = "Which move<br>will you<br>replace?";
+            infoAndBackContainer.appendChild(promptDiv);
+
             populateMoveGrid(moveGrid, ditto.currentMoveset, 'sketch-target');
             addSketchSelectionListeners(moveGrid, sketchedMove);
-            infoAndBackContainer.style.display = 'none';
         } else {
             moveGrid = document.createElement('ul');
             moveGrid.id = 'move-grid';
             moveGridContainer.appendChild(moveGrid);
+            
             infoAndBackContainer.style.display = 'flex';
+            
+            const ppTypeDisplay = document.createElement('div');
+            ppTypeDisplay.id = 'pp-type-display';
+            
+            const backButton = document.createElement('div');
+            backButton.id = 'back-button';
+            backButton.textContent = 'BACK';
+            backButton.className = 'menu-button'; 
+            backButton.addEventListener('click', resetBattleMessageBoxToStandard);
+
+            infoAndBackContainer.appendChild(ppTypeDisplay);
+            infoAndBackContainer.appendChild(backButton);
+
             populateMoveGrid(moveGrid, ditto.currentMoveset);
             addMoveEventListeners(moveGrid, ditto.currentMoveset);
             setupSecondaryMenu();
@@ -800,7 +811,7 @@
             button.addEventListener('mouseover', () => {
                 document.querySelectorAll('.sketch-target').forEach(b => b.classList.remove('menu-selected'));
                 button.classList.add('menu-selected');
-                updateMoveInfo(sketchedMove); 
+                // Could show info about the move being forgotten, but simple is better for now
             });
             button.addEventListener('click', async () => {
                 const moveIndex = parseInt(button.dataset.moveIndex);
@@ -815,7 +826,7 @@
                     } else {
                         resetBattleMessageBoxToStandard();
                     }
-                }, 1500);
+                }, 750); // Reduced lag to 750ms
             });
         });
     }
@@ -873,12 +884,13 @@
         const isVisible = secondaryMenu.style.display === 'block';
         secondaryMenu.style.display = isVisible ? 'none' : 'block';
     });
+    
+    // --- MAIN INIT LOGIC ---
+    function initGame() {
+        const battleScreen = document.getElementById('battle-screen');
+        battleScreen.style.display = 'block'; 
 
-    // --- INIT ---
-    document.addEventListener('DOMContentLoaded', () => {
         updateHpDisplay(ditto, 'player');
-        
-        // Initial Opponent Load
         loadNextOpponent();
         
         setTimeout(() => {
@@ -889,7 +901,17 @@
                 toggleActionMenu(true);
             }, 1500);
         }, 500);
+    }
+
+    // --- START SCREEN LISTENER ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const startOverlay = document.getElementById('start-overlay');
+        startOverlay.addEventListener('click', () => {
+            startOverlay.style.display = 'none';
+            initGame();
+        });
     });
+
 </script>
 
 </body>
